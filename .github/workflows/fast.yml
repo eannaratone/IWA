@@ -39,9 +39,6 @@ jobs:
         with:
           # Fetch at least the immediate parents so that if this is a pull request then we can checkout the head.
           fetch-depth: 2
-      - name: Add entry to hosts file
-        run: |
-          echo "44.201.88.215 fortify.cyberxdemo.com" | sudo tee -a /etc/hosts
       - name: Make envfile
         uses: SpicyPizza/create-envfile@v2.0
         with:
