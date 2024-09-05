@@ -27,7 +27,7 @@ def test_login_functionality(chrome_browser):
     login_page.open_page(url)
 
     # Enter Username and Password
-    login_page.enter_username("user1@localhost.com")
+    login_page.enter_username("user2@localhost.com")
     login_page.enter_password("password")
 
     # Click Login
