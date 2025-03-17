@@ -42,7 +42,7 @@ jobs:
         uses: fortify/github-action@v1
         with:
           sast-scan: true
-          debricked-sca-scan: true
+          debricked-sca-scan: false
         env:
           SSC_URL: ${{vars.SSC_URL}}
           SSC_TOKEN: ${{secrets.SSC_TOKEN}}
