@@ -54,7 +54,7 @@ jobs:
         uses: fortify/github-action@ef5539bf4bd9c45c0bd971978f635a69eae55297
         with:
           sast-scan: true          # Run a SAST scan; if not specified or set to false, no SAST scan will be run
-          debricked-sca-scan: false # For FoD, run an open-source scan as part of the SAST scan (ignored if SAST scan
+          debricked-sca-scan: true # For FoD, run an open-source scan as part of the SAST scan (ignored if SAST scan
                                    # is disabled). For SSC, run a Debricked scan and import results into SSC.
         env:
           #############################################################
@@ -74,7 +74,7 @@ jobs:
           # SETUP_ACTION: <URL or file>                    # Customize setup action
                                                            # Pass extra options to setup action:
           # SETUP_EXTRA_OPTS: --copy-from "${{ github.repository }}:${{ github.event.repository.default_branch }}"
-          # PACKAGE_EXTRA_OPTS: -oss -bt mvn               # Extra 'scancentral package' options
+          PACKAGE_EXTRA_OPTS: -oss -bt mvn               # Extra 'scancentral package' options
           # FOD_SAST_SCAN_EXTRA_OPTS:                      # Extra 'fcli fod sast-scan start' options
           # DO_WAIT: true                                  # Wait for successful scan completion (implied if post-scan actions enabled)
           # DO_POLICY_CHECK: true                          # Fail pipeline if security policy outcome is FAIL
