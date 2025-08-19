@@ -61,7 +61,7 @@ jobs:
           ##### Fortify on Demand configuration
           ##### Remove this section if you're integrating with Fortify Hosted/Software Security Center (see below)
           ### Required configuration
-          FOD_URL: https://ams.fortify.com                 # Must be hardcoded or configured through GitHub variable, not secret
+          FOD_URL: https://api.emea.fortify.com                 # Must be hardcoded or configured through GitHub variable, not secret
           FOD_TENANT: ${{secrets.FOD_TENANT}}              # Either tenant/user/password or client id/secret are required;
           FOD_USER: ${{secrets.FOD_USER}}                  # these should be configured through GitHub secrets.
           FOD_PASSWORD: ${{secrets.FOD_PAT}}
@@ -69,7 +69,7 @@ jobs:
           # FOD_CLIENT_SECRET: ${{secrets.FOD_CLIENT_SECRET}}
           ### Optional configuration
           # FOD_LOGIN_EXTRA_OPTS: --socket-timeout=60s     # Extra 'fcli fod session login' options
-          # FOD_RELEASE: MyApp:MyRelease                   # FoD release name, default: <org>/<repo>:<branch>
+          FOD_RELEASE: EA-IWAJava:GH                   # FoD release name, default: <org>/<repo>:<branch>
           # DO_SETUP: true                                 # Setup FoD application, release & static scan configuration
           # SETUP_ACTION: <URL or file>                    # Customize setup action
                                                            # Pass extra options to setup action:
