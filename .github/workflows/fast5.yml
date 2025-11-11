@@ -1,4 +1,4 @@
-name: FAST with Fortify ScanCentral DAST (Advantage)
+name: FAST with Fortify ScanCentral DAST (New Advantage)
 
 on:
   workflow_dispatch:
