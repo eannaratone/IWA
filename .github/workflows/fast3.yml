@@ -1,4 +1,4 @@
-name: FAST with Fortify ScanCentral DAST
+name: FAST with Fortify ScanCentral DAST Zero App
 
 on:
   workflow_dispatch:
