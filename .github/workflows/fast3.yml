@@ -12,7 +12,7 @@ env:
   DEFAULT_APP_NAME: "Zero WebApp Security"                # actualizado
   DEFAULT_APP_URL: "http://zero.webappsecurity.com"       # actualizado
   DEFAULT_PYTHON_VERSION: "3.12.3"
-  DEFAULT_IMAGE_NAME: "fortifydocker/fortify-fast:24.2.ubuntu.2204"
+  DEFAULT_IMAGE_NAME: "fortifydocker/fortify-fast:25.4.ubuntu.2204"
   DEFAULT_CONTAINER_NAME: "fortify-fast"
   DEFAULT_FAST_PORT: 8087
   DEFAULT_FAST_PROXY: "127.0.0.1:8087"
