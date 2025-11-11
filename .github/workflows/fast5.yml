@@ -1,0 +1,121 @@
+name: FAST with Fortify ScanCentral DAST (Advantage)
+
+on:
+  workflow_dispatch:
+    inputs:
+      runFortifyFAST:
+        description: 'Run Fortify ScanCentral FAST Scan'
+        required: false
+        default: 'true'
+
+env:
+  DEFAULT_APP_NAME: "Advantage Online Shopping"
+  DEFAULT_APP_URL: "https://advantageonlineshopping.com"
+  DEFAULT_PYTHON_VERSION: "3.12.3"
+  DEFAULT_IMAGE_NAME: "fortifydocker/fortify-fast:25.4.ubuntu.2204"
+  DEFAULT_CONTAINER_NAME: "fast-advantage"
+  DEFAULT_FAST_PORT: 8087
+  DEFAULT_FAST_PROXY: "127.0.0.1:8087"
+
+jobs:
+  Run-FAST-Scan:
+    runs-on: ubuntu-latest
+    if: ${{ (github.event.inputs.runFortifyFAST == 'true') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Make envfile
+        uses: SpicyPizza/create-envfile@v2.0
+        with:
+          envkey_APP_NAME: ${{ env.DEFAULT_APP_NAME }}
+          envkey_APP_URL: ${{ env.DEFAULT_APP_URL }}
+          envkey_FAST_PORT: ${{ env.DEFAULT_FAST_PORT }}
+          envkey_FAST_PROXY: ${{ env.DEFAULT_FAST_PROXY }}
+          file_name: .env
+          fail_on_empty: false
+          sort_keys: false
+
+      - name: Start FAST Container
+        shell: bash
+        run: |
+          echo "Starting FAST Container"
+          cat .env
+
+          # Guard: si faltan credenciales, no arranques el contenedor
+          if [ -z "${SCANCENTRAL_DAST_API}" ] || [ -z "${SSC_CI_TOKEN}" ] || [ -z "${SCANCENTRAL_DAST_CICD_TOKEN}" ]; then
+            echo "FAST env missing (SCANCENTRAL_DAST_API / SSC_CI_TOKEN / SCANCENTRAL_DAST_CICD_TOKEN). Skipping FAST start."
+            exit 0
+          fi
+
+          # Dir de certificados con permisos
+          mkdir -p "$HOME/.fast/certs"
+          chmod 0777 "$HOME/.fast/certs"
+
+          echo "Launching container: ${CONTAINER_NAME}"
+          docker run --name "$CONTAINER_NAME" -d \
+            --user 0 \
+            -p ${FAST_PORT}:8087 \
+            -v "$HOME/.fast/certs:/etc/fast/certs" \
+            "$IMAGE_NAME" \
+            -k -p "${FAST_PORT}" \
+            -u "${SCANCENTRAL_DAST_API}" \
+            -CIToken "${SSC_CI_TOKEN}" \
+            -CICDToken "${SCANCENTRAL_DAST_CICD_TOKEN}" \
+            -n "${APP_NAME} FAST Scan"
+
+          # Muestra últimos logs (no falla el job si no hay)
+          docker logs "$CONTAINER_NAME" --since 10s || true
+        env:
+          IMAGE_NAME: ${{ env.DEFAULT_IMAGE_NAME }}
+          CONTAINER_NAME: ${{ env.DEFAULT_CONTAINER_NAME }}
+          FAST_PORT: ${{ env.DEFAULT_FAST_PORT }}
+          SCANCENTRAL_DAST_API: ${{ vars.FORTIFY_SCDAST_API_URL }}
+          SSC_CI_TOKEN: ${{ secrets.FORTIFY_SSC_TOKEN }}
+          SCANCENTRAL_DAST_CICD_TOKEN: ${{ vars.FORTIFY_SCDAST_FAST_CICD_TOKEN }}
+          APP_NAME: ${{ env.DEFAULT_APP_NAME }}
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+          install-chromedriver: true
+        id: setup-chrome
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install pytest selenium pytest-selenium
+          pip install webdriver-manager pytest-xdist pytest-md pytest-emoji
+          # pip install python-dotenv  # descomenta si tu test lee .env
+
+      - name: Run Selenium test (Katalon export)
+        run: |
+          echo "APP_URL=$APP_URL"
+          # Ejecuta el test exportado
+          xvfb-run -a pytest -v --maxfail=1 tests/AdvShopApp.py
+        env:
+          APP_URL: ${{ env.DEFAULT_APP_URL }}
+
+      - name: Stop FAST Container
+        shell: bash
+        run: |
+          echo "Stopping FAST Container"
+          if docker ps -a --format '{{.Names}}' | grep -Eq "^${CONTAINER_NAME}$"; then
+            docker logs "$CONTAINER_NAME" || true
+            if docker ps --format '{{.Names}}' | grep -Eq "^${CONTAINER_NAME}$"; then
+              docker exec "$CONTAINER_NAME" fast -p "${FAST_PORT}" -s || true
+            fi
+            docker stop "$CONTAINER_NAME" || true
+          else
+            echo "Container '${CONTAINER_NAME}' not found; skipping."
+          fi
+        env:
+          CONTAINER_NAME: ${{ env.DEFAULT_CONTAINER_NAME }}
+          FAST_PORT: ${{ env.DEFAULT_FAST_PORT }}
