@@ -85,7 +85,7 @@ jobs:
         run: |
           echo "APP_URL=$APP_URL"
           # Ejecuta el archivo exportado concreto
-          xvfb-run -a pytest -q tests/AppDynamicsJob.py
+          xvfb-run -a pytest -v --maxfail=1 tests/AppDynamicsJob.py
         env:
           APP_URL: ${{ env.DEFAULT_APP_URL }}
 
