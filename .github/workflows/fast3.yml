@@ -73,7 +73,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pytest selenium
+          pip install pytest selenium pytest-selenium
           pip install webdriver-manager pytest-xdist pytest-md pytest-emoji
           # Si tu script lee variables de .env, descomenta:
           # pip install python-dotenv
