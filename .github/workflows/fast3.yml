@@ -1,0 +1,103 @@
+name: FAST with Fortify ScanCentral DAST
+
+on:
+  workflow_dispatch:
+    inputs:
+      runFortifyFAST:
+        description: 'Run Fortify ScanCentral FAST Scan'
+        required: false
+        default: 'true'
+
+env:
+  DEFAULT_APP_NAME: "Zero WebApp Security"                # actualizado
+  DEFAULT_APP_URL: "http://zero.webappsecurity.com"       # actualizado
+  DEFAULT_PYTHON_VERSION: "3.12.3"
+  DEFAULT_IMAGE_NAME: "fortifydocker/fortify-fast:24.2.ubuntu.2204"
+  DEFAULT_CONTAINER_NAME: "fortify-fast"
+  DEFAULT_FAST_PORT: 8087
+  DEFAULT_FAST_PROXY: "127.0.0.1:8087"
+
+jobs:
+  Run-FAST-Scan:
+    runs-on: ubuntu-latest
+    if: ${{ (github.event.inputs.runFortifyFAST == 'true') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Make envfile
+        uses: SpicyPizza/create-envfile@v2.0
+        with:
+          envkey_APP_NAME: ${{ env.DEFAULT_APP_NAME }}
+          envkey_APP_URL: ${{ env.DEFAULT_APP_URL }}
+          envkey_FAST_PORT: ${{ env.DEFAULT_FAST_PORT }}
+          envkey_FAST_PROXY: ${{ env.DEFAULT_FAST_PROXY }}
+          file_name: .env
+          fail_on_empty: false
+          sort_keys: false
+
+      - name: Start FAST Container
+        shell: bash
+        run: |
+          cat .env
+          echo "Starting FAST Container"
+          mkdir -p "$HOME/.fast/certs"
+          docker run --name $CONTAINER_NAME -d -p ${FAST_PORT}:8087 \
+            -v "$HOME/.fast/certs:/etc/fast/certs" --rm $IMAGE_NAME \
+            -k -p ${FAST_PORT} -u ${SCANCENTRAL_DAST_API} \
+            -CIToken ${SSC_CI_TOKEN} -CICDToken ${SCANCENTRAL_DAST_CICD_TOKEN} \
+            -n "${APP_NAME} FAST Scan"
+          docker logs $CONTAINER_NAME
+        env:
+          IMAGE_NAME: ${{ env.DEFAULT_IMAGE_NAME }}
+          CONTAINER_NAME: ${{ env.DEFAULT_CONTAINER_NAME }}
+          FAST_PORT: ${{ env.DEFAULT_FAST_PORT }}
+          SCANCENTRAL_DAST_API: ${{ vars.FORTIFY_SCDAST_API_URL }}
+          SSC_CI_TOKEN: ${{ secrets.FORTIFY_SSC_TOKEN }}
+          SCANCENTRAL_DAST_CICD_TOKEN: ${{ vars.FORTIFY_SCDAST_FAST_CICD_TOKEN }}
+          APP_NAME: ${{ env.DEFAULT_APP_NAME }}
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+          install-chromedriver: true
+        id: setup-chrome
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install pytest selenium
+          pip install webdriver-manager pytest-xdist pytest-md pytest-emoji
+          # Si tu script lee variables de .env, descomenta:
+          # pip install python-dotenv
+
+      - name: Install Xvfb (headless display)
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Run Selenium test (Katalon export)
+        run: |
+          echo "APP_URL=$APP_URL"
+          # Ejecuta el archivo exportado concreto
+          xvfb-run -a pytest -q tests/AppDynamicsJob.py
+        env:
+          APP_URL: ${{ env.DEFAULT_APP_URL }}
+
+      - name: Stop FAST Container
+        shell: bash
+        run: |
+          echo "Stopping FAST Container"
+          docker logs $CONTAINER_NAME
+          docker exec $CONTAINER_NAME fast -p ${FAST_PORT} -s
+        env:
+          CONTAINER_NAME: ${{ env.DEFAULT_CONTAINER_NAME }}
+          FAST_PORT: ${{ env.DEFAULT_FAST_PORT }}
+          SCANCENTRAL_DAST_API: ${{ vars.FORTIFY_SCDAST_API_URL }}
+          SSC_CI_TOKEN: ${{ secrets.FORTIFY_SSC_TOKEN }}
+          SCANCENTRAL_DAST_CICD_TOKEN: ${{ vars.FORTIFY_SCDAST_CICD_TOKEN }}
