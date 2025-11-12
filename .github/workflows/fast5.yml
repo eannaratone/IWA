@@ -75,14 +75,14 @@ jobs:
           SCANCENTRAL_DAST_CICD_TOKEN: ${{ vars.FORTIFY_SCDAST_FAST_CICD_TOKEN }}
           APP_NAME: ${{ env.DEFAULT_APP_NAME }}
 
-      # 🔧 Instalar Firefox y geckodriver
+      # 🔧 Instalar Firefox y GeckoDriver
       - name: Install Firefox
         uses: browser-actions/setup-firefox@v1
         with:
           firefox-version: latest
 
       - name: Install geckodriver
-        uses: browser-actions/setup-geckodriver@v1
+        uses: ruby/setup-geckodriver@v1
         with:
           geckodriver-version: latest
 
@@ -95,13 +95,12 @@ jobs:
         run: |
           pip install pytest selenium pytest-selenium
           pip install pytest-xdist pytest-md pytest-emoji
-          # pip install python-dotenv  # si tu test leyera .env
+          # pip install python-dotenv  # descomenta si tu test lee .env
 
       - name: Run Selenium test (Firefox)
         run: |
           echo "APP_URL=$APP_URL"
           echo "FAST_PROXY=$FAST_PROXY"
-          # Xvfb para entorno gráfico virtual (aunque usamos headless)
           xvfb-run -a pytest -v --maxfail=1 tests/AdvShopAppFF.py
         env:
           APP_URL: ${{ env.DEFAULT_APP_URL }}
