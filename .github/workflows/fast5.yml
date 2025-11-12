@@ -1,4 +1,4 @@
-name: FAST with Fortify ScanCentral DAST (New Advantage)
+name: FAST with Fortify ScanCentral DAST (Advantage - Firefox)
 
 on:
   workflow_dispatch:
@@ -13,12 +13,12 @@ env:
   DEFAULT_APP_URL: "https://advantageonlineshopping.com"
   DEFAULT_PYTHON_VERSION: "3.12.3"
   DEFAULT_IMAGE_NAME: "fortifydocker/fortify-fast:25.4.ubuntu.2204"
-  DEFAULT_CONTAINER_NAME: "fast-advantage"
+  DEFAULT_CONTAINER_NAME: "fast-advantage-ff"
   DEFAULT_FAST_PORT: 8087
   DEFAULT_FAST_PROXY: "127.0.0.1:8087"
 
 jobs:
-  Run-FAST-Scan:
+  Run-FAST-Scan-FF:
     runs-on: ubuntu-latest
     if: ${{ (github.event.inputs.runFortifyFAST == 'true') }}
     steps:
@@ -44,13 +44,12 @@ jobs:
           echo "Starting FAST Container"
           cat .env
 
-          # Guard: si faltan credenciales, no arranques el contenedor
+          # Guard: evita arranque si faltan credenciales
           if [ -z "${SCANCENTRAL_DAST_API}" ] || [ -z "${SSC_CI_TOKEN}" ] || [ -z "${SCANCENTRAL_DAST_CICD_TOKEN}" ]; then
             echo "FAST env missing (SCANCENTRAL_DAST_API / SSC_CI_TOKEN / SCANCENTRAL_DAST_CICD_TOKEN). Skipping FAST start."
             exit 0
           fi
 
-          # Dir de certificados con permisos
           mkdir -p "$HOME/.fast/certs"
           chmod 0777 "$HOME/.fast/certs"
 
@@ -66,7 +65,6 @@ jobs:
             -CICDToken "${SCANCENTRAL_DAST_CICD_TOKEN}" \
             -n "${APP_NAME} FAST Scan"
 
-          # Muestra últimos logs (no falla el job si no hay)
           docker logs "$CONTAINER_NAME" --since 10s || true
         env:
           IMAGE_NAME: ${{ env.DEFAULT_IMAGE_NAME }}
@@ -77,12 +75,16 @@ jobs:
           SCANCENTRAL_DAST_CICD_TOKEN: ${{ vars.FORTIFY_SCDAST_FAST_CICD_TOKEN }}
           APP_NAME: ${{ env.DEFAULT_APP_NAME }}
 
-      - name: Install Chrome
-        uses: browser-actions/setup-chrome@v1
+      # 🔧 Instalar Firefox y geckodriver
+      - name: Install Firefox
+        uses: browser-actions/setup-firefox@v1
         with:
-          chrome-version: stable
-          install-chromedriver: true
-        id: setup-chrome
+          firefox-version: latest
+
+      - name: Install geckodriver
+        uses: browser-actions/setup-geckodriver@v1
+        with:
+          geckodriver-version: latest
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -92,27 +94,35 @@ jobs:
       - name: Install dependencies
         run: |
           pip install pytest selenium pytest-selenium
-          pip install webdriver-manager pytest-xdist pytest-md pytest-emoji
-          # pip install python-dotenv  # descomenta si tu test lee .env
+          pip install pytest-xdist pytest-md pytest-emoji
+          # pip install python-dotenv  # si tu test leyera .env
 
-      - name: Run Selenium test (Katalon export)
+      - name: Run Selenium test (Firefox)
         run: |
           echo "APP_URL=$APP_URL"
-          # Ejecuta el test exportado
-          xvfb-run -a pytest -v --maxfail=1 tests/AdvShopApp.py
+          echo "FAST_PROXY=$FAST_PROXY"
+          # Xvfb para entorno gráfico virtual (aunque usamos headless)
+          xvfb-run -a pytest -v --maxfail=1 tests/AdvShopAppFF.py
         env:
           APP_URL: ${{ env.DEFAULT_APP_URL }}
+          FAST_PROXY: ${{ env.DEFAULT_FAST_PROXY }}
 
       - name: Stop FAST Container
         shell: bash
         run: |
           echo "Stopping FAST Container"
           if docker ps -a --format '{{.Names}}' | grep -Eq "^${CONTAINER_NAME}$"; then
-            docker logs "$CONTAINER_NAME" || true
+            echo ">>> Last 30s of logs BEFORE stop"
+            docker logs "$CONTAINER_NAME" --since 30s || true
             if docker ps --format '{{.Names}}' | grep -Eq "^${CONTAINER_NAME}$"; then
+              echo ">>> Sending graceful stop to FAST"
               docker exec "$CONTAINER_NAME" fast -p "${FAST_PORT}" -s || true
+              sleep 5
             fi
+            echo ">>> Stopping container"
             docker stop "$CONTAINER_NAME" || true
+            echo ">>> Containers after stop"
+            docker ps -a || true
           else
             echo "Container '${CONTAINER_NAME}' not found; skipping."
           fi
