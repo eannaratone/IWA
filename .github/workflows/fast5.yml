@@ -89,6 +89,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install pytest selenium pytest-selenium
+          pip install webdriver-manager
           pip install pytest-xdist pytest-md pytest-emoji
 
       - name: Run Selenium test (Firefox)
